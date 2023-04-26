@@ -15,7 +15,7 @@ const createElement = (x1, y1, x2, y2, type) => {
 function App() {
   const [drawing, setDrawing] = useState(false);
   const [elements, setElements] = useState([]);
-  const [elementType, setElementType] = useState("line");
+  const [elementType, setElementType] = useState("line"); 
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
