@@ -91,6 +91,17 @@ function App() {
   };
   const handleMouseMove = (event) => {
     const { clientX, clientY } = event;
+
+    if (tool === "selection") {
+      event.target.style.cursor = getElementAtPosition(
+        clientX,
+        clientY,
+        elements
+      )
+        ? "move"
+        : "default";
+    }
+
     if (action === "drawing") {
       const index = elements.length - 1;
       const { x1, y1 } = elements[index];
@@ -104,6 +115,7 @@ function App() {
       updateElement(id, newX1, newY1, newX1 + width, newY1 + height, type);
     }
   };
+
   const handleMouseUp = (event) => {
     setAction("none");
     setSelectedElement(null);
