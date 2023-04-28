@@ -100,6 +100,7 @@ function App() {
       )
         ? "move"
         : "default";
+        
     }
 
     if (action === "drawing") {
