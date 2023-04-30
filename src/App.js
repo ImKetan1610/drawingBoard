@@ -256,7 +256,7 @@ function App() {
   };
 
   return (
-    <>
+    <div className="board">
       <div style={{ position: "fixed" }}>
         <input
           type="radio"
@@ -286,10 +286,7 @@ function App() {
         />
         <label htmlFor="rectangle">Rectangle</label>
       </div>
-      <div style={{ position: "fixed", bottom: 0, padding: 10 }}>
-        <button onClick={undo}>Undo</button>
-        <button onClick={redo}>Redo</button>
-      </div>
+
       <canvas
         id="canvas"
         width={window.innerWidth}
@@ -300,7 +297,11 @@ function App() {
       >
         Canvas
       </canvas>
-    </>
+      <div style={{ position: "fixed", bottom: 0, padding: 10 }}>
+        <button onClick={undo}>Undo</button>
+        <button onClick={redo}>Redo</button>
+      </div>
+    </div>
   );
 }
 
