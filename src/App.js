@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useState } from "react";
 import rough from "roughjs/bundled/rough.esm";
 import "./App.css";
 
@@ -38,21 +38,6 @@ const adjustElementCoordinates = (element) => {
   }
 };
 
-const cursorForPosition = (position) => {
-  switch (position) {
-    case "tl":
-    case "br":
-    case "start":
-    case "end":
-      return "nwse-resize";
-    case "tr":
-    case "bl":
-      return "nwse-resize";
-    default:
-      return "move";
-  }
-};
-
 const nearPoint = (x, y, x1, y1, name) => {
   return Math.abs(x - x1) < 5 && Math.abs(y - y1) < 5 ? name : null;
 };
@@ -85,6 +70,21 @@ const positionWithinElement = (x, y, element) => {
 const distance = (a, b) =>
   Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
 
+const cursorForPosition = (position) => {
+  switch (position) {
+    case "tl":
+    case "br":
+    case "start":
+    case "end":
+      return "nwse-resize";
+    case "tr":
+    case "bl":
+      return "nwse-resize";
+    default:
+      return "move";
+  }
+};
+
 const resizedCoordinates = (clientX, clientY, position, coordinates) => {
   const { x1, x2, y1, y2 } = coordinates;
   switch (position) {
@@ -103,9 +103,39 @@ const resizedCoordinates = (clientX, clientY, position, coordinates) => {
   }
 };
 
+//custom hook which replace elements and setElements
+const useHistory = (initialState) => {
+  const [index, setIndex] = useState(0);
+  const [history, setHistory] = useState([initialState]);
+
+  const setState = (action, overwrite = false) => {
+    const newState =
+      typeof action === "function" ? action(history[index]) : action;
+
+    if (overwrite) {
+      const historyCopy = [...history];
+      historyCopy[index] = newState;
+      setHistory(historyCopy);
+    } else {
+      const updatedState = [...history].slice(0, index + 1);
+      setHistory((prevState) => [...updatedState, newState]);
+      setIndex((prevState) => prevState + 1);
+    }
+  };
+
+  const undo = () => {
+    index > 0 && setIndex((prevState) => prevState - 1);
+  };
+  const redo = () => {
+    index < history.length - 1 && setIndex((prevState) => prevState + 1);
+  };
+
+  return [history[index], setState, undo, redo];
+};
+
 function App() {
   const [action, setAction] = useState("none");
-  const [elements, setElements] = useState([]);
+  const [elements, setElements, undo, redo] = useHistory([]);
   const [tool, setTool] = useState("line");
   const [selectedElement, setSelectedElement] = useState(null);
 
@@ -122,12 +152,27 @@ function App() {
     });
   }, [elements]);
 
+  useEffect(() => {
+    const undoRedoFunction = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "z") {
+        undo();
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === "y") {
+        redo();
+      }
+    };
+    document.addEventListener("keydown", undoRedoFunction);
+    return () => {
+      document.removeEventListener("keydown", undoRedoFunction);
+    };
+  }, [undo, redo]);
+
   const updateElement = (id, x1, y1, x2, y2, type) => {
     const updatedElement = createElement(id, x1, y1, x2, y2, type);
 
     const elementsCopy = [...elements];
     elementsCopy[id] = updatedElement;
-    setElements(elementsCopy);
+    setElements(elementsCopy, true);
   };
 
   const handleMouseDown = (event) => {
@@ -139,6 +184,7 @@ function App() {
         const offsetX = clientX - element.x1;
         const offsetY = clientY - element.y1;
         setSelectedElement({ ...element, offsetX, offsetY });
+        setElements((prevState) => prevState);
 
         if (element.position === "inside") {
           setAction("moving");
@@ -162,6 +208,7 @@ function App() {
       setAction("drawing");
     }
   };
+
   const handleMouseMove = (event) => {
     const { clientX, clientY } = event;
 
@@ -196,11 +243,13 @@ function App() {
   };
 
   const handleMouseUp = (event) => {
-    const index = selectedElement.id;
-    const { id, type } = elements[index];
-    if (action === "drawing" || action === "resize") {
-      const { x1, y1, x2, y2 } = adjustElementCoordinates(elements[index]);
-      updateElement(id, x1, y1, x2, y2, type);
+    if (selectedElement) {
+      const index = selectedElement.id;
+      const { id, type } = elements[index];
+      if (action === "drawing" || action === "resize") {
+        const { x1, y1, x2, y2 } = adjustElementCoordinates(elements[index]);
+        updateElement(id, x1, y1, x2, y2, type);
+      }
     }
     setAction("none");
     setSelectedElement(null);
@@ -237,7 +286,10 @@ function App() {
         />
         <label htmlFor="rectangle">Rectangle</label>
       </div>
-
+      <div style={{ position: "fixed", bottom: 0, padding: 10 }}>
+        <button onClick={undo}>Undo</button>
+        <button onClick={redo}>Redo</button>
+      </div>
       <canvas
         id="canvas"
         width={window.innerWidth}
